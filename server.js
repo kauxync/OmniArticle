@@ -117,11 +117,13 @@ const HTML_PAGE = `<!DOCTYPE html>
         }
 
         let debounceTimer;
-        function handleTextSelection() {
+        let lastSelection = '';
+        document.addEventListener('selectionchange', () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 let selectedText = window.getSelection().toString().trim();
-                if (selectedText.length > 0) {
+                if (selectedText.length > 0 && selectedText !== lastSelection) {
+                    lastSelection = selectedText;
                     document.getElementById('selectedTextDisplay').innerText = selectedText;
                     translateToHindi(selectedText);
                     if (!selectedText.includes(' ') && selectedText.match(/^[a-zA-Z]+$/)) {
@@ -130,11 +132,8 @@ const HTML_PAGE = `<!DOCTYPE html>
                         document.getElementById('synonymDisplay').innerHTML = '<em>Select a single word to see synonyms.</em>';
                     }
                 }
-            }, 200);
-        }
-        const articleArea = document.getElementById('articleArea');
-        articleArea.addEventListener('mouseup', handleTextSelection);
-        articleArea.addEventListener('touchend', handleTextSelection);
+            }, 300);
+        });
 
         async function translateToHindi(text) {
             const el = document.getElementById('translationDisplay');
