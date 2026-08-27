@@ -23,7 +23,8 @@ const HTML_PAGE = `<!DOCTYPE html>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: #f9f9f9; }
+        body { font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: #f9f9f9; -webkit-user-select: none; user-select: none; }
+        .article-section { -webkit-user-select: text; user-select: text; }
         header { background: #1a1a1a; padding: 15px 20px; display: flex; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
         header input { flex: 1; padding: 10px; font-size: 16px; border: none; border-radius: 4px; font-family: inherit; }
         header button { padding: 10px 20px; font-size: 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s; font-family: inherit; font-weight: 500; }
@@ -116,7 +117,7 @@ const HTML_PAGE = `<!DOCTYPE html>
         }
 
         let debounceTimer;
-        document.getElementById('articleArea').addEventListener('mouseup', () => {
+        function handleTextSelection() {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 let selectedText = window.getSelection().toString().trim();
@@ -129,8 +130,11 @@ const HTML_PAGE = `<!DOCTYPE html>
                         document.getElementById('synonymDisplay').innerHTML = '<em>Select a single word to see synonyms.</em>';
                     }
                 }
-            }, 150);
-        });
+            }, 200);
+        }
+        const articleArea = document.getElementById('articleArea');
+        articleArea.addEventListener('mouseup', handleTextSelection);
+        articleArea.addEventListener('touchend', handleTextSelection);
 
         async function translateToHindi(text) {
             const el = document.getElementById('translationDisplay');
