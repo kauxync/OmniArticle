@@ -3,6 +3,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 
@@ -193,8 +194,10 @@ async function executeTranslation(text, targetLang, sourceLang = 'auto') {
   throw new Error(`Unable to translate text to ${targetLang}. Please try again.`);
 }
 
+const apiRouter = express.Router();
+
 // Health check / API index
-app.get('/api', (req, res) => {
+apiRouter.get('/', (req, res) => {
   res.json({
     status: 'ok',
     name: 'OmniArticle API',
@@ -210,29 +213,29 @@ app.get('/api', (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => {
+apiRouter.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
 // Get supported languages
-app.get('/api/languages', (req, res) => {
+apiRouter.get('/languages', (req, res) => {
   res.json({ languages: SUPPORTED_LANGUAGES });
 });
 
 // Get sample articles
-app.get('/api/samples', (req, res) => {
+apiRouter.get('/samples', (req, res) => {
   res.json({ samples: SAMPLE_ARTICLES });
 });
 
 // Get single sample article
-app.get('/api/samples/:id', (req, res) => {
+apiRouter.get('/samples/:id', (req, res) => {
   const sample = SAMPLE_ARTICLES.find(s => s.id === req.params.id);
   if (!sample) return res.status(404).json({ error: 'Sample article not found' });
   res.json(sample);
 });
 
 // Translation Endpoint
-app.post('/api/translate', async (req, res) => {
+apiRouter.post('/translate', async (req, res) => {
   const { text, targetLang = 'hi', sourceLang = 'auto' } = req.body;
   if (!text) {
     return res.status(400).json({ error: 'Text is required for translation.' });
@@ -248,7 +251,7 @@ app.post('/api/translate', async (req, res) => {
 });
 
 // Batch Translation Endpoint (for Full Article translation)
-app.post('/api/translate-batch', async (req, res) => {
+apiRouter.post('/translate-batch', async (req, res) => {
   const { texts, targetLang = 'hi', sourceLang = 'auto' } = req.body;
   if (!Array.isArray(texts) || texts.length === 0) {
     return res.status(400).json({ error: 'Array of texts is required.' });
@@ -278,7 +281,7 @@ app.post('/api/translate-batch', async (req, res) => {
 });
 
 // Dictionary & Word Details Endpoint
-app.get('/api/dictionary', async (req, res) => {
+apiRouter.get('/dictionary', async (req, res) => {
   const word = (req.query.word || '').trim().toLowerCase();
   if (!word) {
     return res.status(400).json({ error: 'Word query parameter is required.' });
@@ -370,7 +373,7 @@ app.get('/api/dictionary', async (req, res) => {
 });
 
 // Universal Article Fetcher Endpoint
-app.post('/api/fetch-article', async (req, res) => {
+apiRouter.post('/fetch-article', async (req, res) => {
   const { url } = req.body;
 
   if (!url || typeof url !== 'string') {
@@ -598,18 +601,20 @@ app.post('/api/fetch-article', async (req, res) => {
   }
 });
 
+// Mount API router to both '/api' and '/'
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
+
 // Root route / SPA fallback (for local development)
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      if (req.path.startsWith('/api')) {
-        res.status(404).json({ error: `API endpoint '${req.path}' not found` });
-      } else {
-        res.status(404).send('Page not found');
-      }
-    }
-  });
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: `API endpoint '${req.path}' not found` });
+  }
+  return res.status(404).send('Page not found');
 });
 
 // Start Server locally
