@@ -193,7 +193,26 @@ async function executeTranslation(text, targetLang, sourceLang = 'auto') {
   throw new Error(`Unable to translate text to ${targetLang}. Please try again.`);
 }
 
-// Routes
+// Health check / API index
+app.get('/api', (req, res) => {
+  res.json({
+    status: 'ok',
+    name: 'OmniArticle API',
+    version: '2.0.0',
+    endpoints: [
+      '/api/languages',
+      '/api/samples',
+      '/api/translate',
+      '/api/translate-batch',
+      '/api/dictionary',
+      '/api/fetch-article'
+    ]
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
 
 // Get supported languages
 app.get('/api/languages', (req, res) => {
@@ -579,12 +598,26 @@ app.post('/api/fetch-article', async (req, res) => {
   }
 });
 
-// Root route
+// Root route / SPA fallback (for local development)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      if (req.path.startsWith('/api')) {
+        res.status(404).json({ error: `API endpoint '${req.path}' not found` });
+      } else {
+        res.status(404).send('Page not found');
+      }
+    }
+  });
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Universal Article Reader & Translator running at http://localhost:${PORT}`);
-});
+// Start Server locally
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Universal Article Reader & Translator running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
+
