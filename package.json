@@ -8,12 +8,10 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@mozilla/readability": "^0.6.0",
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "jsdom": "^30.1.1"
+    "express": "^4.18.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

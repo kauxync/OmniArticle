@@ -4,8 +4,6 @@ const cheerio = require('cheerio');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const { JSDOM } = require('jsdom');
-const { Readability } = require('@mozilla/readability');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,6 +37,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 // Supported Languages
 const SUPPORTED_LANGUAGES = [
@@ -406,9 +405,10 @@ apiRouter.post('/fetch-article', async (req, res) => {
     });
 
     const html = response.data;
-    const dom = new JSDOM(html, { url: parsedUrl.href });
-    const document = dom.window.document;
     const $ = cheerio.load(html);
+
+    // Remove scripts, styles, boilerplates, ads
+    $('script, style, noscript, iframe, svg, nav, footer, header, aside, .advertisement, .ad, .social-share, .comments, .sidebar').remove();
 
     // Metadata extraction via OpenGraph / Twitter Cards / Meta
     let leadImage =
@@ -434,110 +434,90 @@ apiRouter.post('/fetch-article', async (req, res) => {
       $('meta[property="og:site_name"]').attr('content') ||
       parsedUrl.hostname.replace(/^www\./i, '');
 
-    // Parse with Readability
-    const reader = new Readability(document, {
-      charThreshold: 20,
-      keepClasses: false
-    });
-    const article = reader.parse();
+    let title =
+      $('meta[property="og:title"]').attr('content') ||
+      $('meta[name="twitter:title"]').attr('content') ||
+      $('h1').first().text().trim() ||
+      $('title').text().trim() ||
+      'Untitled Article';
 
-    let title = '';
+    let excerpt =
+      $('meta[property="og:description"]').attr('content') ||
+      $('meta[name="description"]').attr('content') ||
+      $('meta[name="twitter:description"]').attr('content') ||
+      '';
+
     let author = metaAuthor;
     let siteName = metaSiteName;
-    let excerpt = '';
     let blocks = [];
     let pCounter = 0;
 
-    if (article && article.content) {
-      title = article.title || $('title').text().trim();
-      if (article.byline && !author) author = article.byline;
-      if (article.siteName) siteName = article.siteName;
-      if (article.excerpt) excerpt = article.excerpt;
+    // Potential article containers
+    const articleSelectors = [
+      '#pcl-full-content',
+      '.article-body',
+      '.article-content',
+      '.story-details',
+      '.story-article',
+      '.story-body',
+      '.text-description',
+      '.content-article',
+      '.articles-listing-content',
+      'article .content',
+      'article',
+      '.post-content',
+      '.entry-content',
+      '.main-content',
+      'main'
+    ];
 
-      // Parse Readability HTML output into clean structured blocks
-      const $content = cheerio.load(article.content);
-
-      $content('*').each((_, el) => {
-        const tag = el.tagName.toLowerCase();
-        if (tag === 'p') {
-          const text = $content(el).text().trim().replace(/\s+/g, ' ');
-          if (text.length > 25 && !text.toLowerCase().includes('subscribe now') && !text.toLowerCase().includes('all rights reserved')) {
-            blocks.push({
-              type: 'paragraph',
-              id: `p-${pCounter++}`,
-              text
-            });
-          }
-        } else if (tag === 'h2' || tag === 'h3' || tag === 'h4') {
-          const text = $content(el).text().trim();
-          if (text.length > 3 && text.length < 150) {
-            blocks.push({
-              type: 'heading',
-              level: parseInt(tag.charAt(1)),
-              text
-            });
-          }
-        } else if (tag === 'blockquote') {
-          const text = $content(el).text().trim();
-          if (text) {
-            blocks.push({
-              type: 'quote',
-              text
-            });
-          }
-        }
-      });
+    let $container = null;
+    for (const sel of articleSelectors) {
+      if ($(sel).length && $(sel).find('p').length >= 2) {
+        $container = $(sel).first();
+        break;
+      }
     }
 
-    // Fallback if Readability extracted fewer than 2 paragraphs
-    if (blocks.length < 2) {
-      title = title || $('h1').first().text().trim() || $('.article-title').first().text().trim() || $('title').text().trim();
+    if (!$container) {
+      $container = $('body');
+    }
 
-      const articleSelectors = [
-        '#pcl-full-content',
-        '.article-body',
-        '.story-details',
-        '.story-article',
-        '.text-description',
-        '.content-article',
-        '.articles-listing-content',
-        'article .content',
-        'article',
-        '.post-content',
-        '.entry-content',
-        '.main-content',
-        '.story-body'
-      ];
+    $container.find('p, h2, h3, h4, blockquote').each((_, el) => {
+      const tag = el.tagName.toLowerCase();
+      const $el = $(el);
 
-      for (const sel of articleSelectors) {
-        if ($(sel).length) {
-          $(sel).find('p').each((_, el) => {
-            const text = $(el).text().trim().replace(/\s+/g, ' ');
-            if (text.length > 30 && !text.toLowerCase().includes('click here') && !text.toLowerCase().includes('sign up')) {
-              blocks.push({
-                type: 'paragraph',
-                id: `p-${pCounter++}`,
-                text
-              });
-            }
+      if (tag === 'p') {
+        const text = $el.text().trim().replace(/\s+/g, ' ');
+        if (
+          text.length > 25 &&
+          !/subscribe now|all rights reserved|terms of service|privacy policy|sign up for|click here|advertisement/i.test(text)
+        ) {
+          blocks.push({
+            type: 'paragraph',
+            id: `p-${pCounter++}`,
+            text
           });
-          if (blocks.length >= 2) break;
+        }
+      } else if (['h2', 'h3', 'h4'].includes(tag)) {
+        const text = $el.text().trim();
+        if (text.length > 3 && text.length < 150) {
+          blocks.push({
+            type: 'heading',
+            level: parseInt(tag.charAt(1)),
+            text
+          });
+        }
+      } else if (tag === 'blockquote') {
+        const text = $el.text().trim();
+        if (text) {
+          blocks.push({
+            type: 'quote',
+            text
+          });
         }
       }
-
-      if (blocks.length === 0) {
-        $('p').each((_, el) => {
-          const text = $(el).text().trim().replace(/\s+/g, ' ');
-          if (text.length > 45 && !text.toLowerCase().includes('cookie') && !text.toLowerCase().includes('privacy policy')) {
-            blocks.push({
-              type: 'paragraph',
-              id: `p-${pCounter++}`,
-              text
-            });
-          }
-        });
-      }
-    }
+    });
 
     // Check for author fallback
     if (!author) {
@@ -549,6 +529,7 @@ apiRouter.post('/fetch-article', async (req, res) => {
         }
       }
     }
+    if (!author) author = 'Staff Writer';
 
     // Check for image fallback
     if (!leadImage) {
@@ -607,9 +588,13 @@ app.use('/', apiRouter);
 
 // Root route / SPA fallback (for local development)
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  if (fs.existsSync(indexPath)) {
-    return res.sendFile(indexPath);
+  const rootIndexPath = path.join(__dirname, 'index.html');
+  const publicIndexPath = path.join(__dirname, 'public', 'index.html');
+  if (fs.existsSync(rootIndexPath)) {
+    return res.sendFile(rootIndexPath);
+  }
+  if (fs.existsSync(publicIndexPath)) {
+    return res.sendFile(publicIndexPath);
   }
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: `API endpoint '${req.path}' not found` });

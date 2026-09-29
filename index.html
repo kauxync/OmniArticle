@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>OmniArticle | Universal Article Reader & Multi-Language Translator</title>
+  <meta name="description" content="Read and translate any article from any website into 30+ languages with instant interactive vocabulary, pronunciation, and bilingual dual view.">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+
+  <!-- Google Fonts: Space Grotesk, Inter, Merriweather, Multi-Script -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="font-space">
+
+  <!-- Reading Progress Bar -->
+  <div id="readingProgressBar" class="reading-progress-bar"></div>
+
+  <!-- Main App Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-logo" onclick="resetToHome()" title="OmniArticle Home">
+        <div class="brand-logo-svg-wrapper">
+          <img src="/assets/icon.svg" alt="OmniArticle Logo" class="brand-svg-img">
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Omni<span class="accent-text">Article</span></span>
+          <span class="brand-subtitle">Universal Reader & Translator</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- URL Input Bar (Responsive on Mobile & Tablet) -->
+    <div class="header-center" id="headerCenter">
+      <div class="url-input-container">
+        <i class="fa-solid fa-link url-icon"></i>
+        <input 
+          type="url" 
+          id="urlInput" 
+          placeholder="Paste any article link (Indian Express, BBC, NYT, Wikipedia...)"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="clearUrlBtn" class="input-clear-btn" title="Clear URL" style="display:none;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <button id="pasteUrlBtn" class="input-paste-btn" title="Paste from clipboard">
+          <i class="fa-regular fa-clipboard"></i> <span class="hide-mobile">Paste</span>
+        </button>
+        <button id="fetchBtn" class="fetch-btn">
+          <i class="fa-solid fa-bolt"></i>
+          <span class="btn-text">Read Article</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Header Actions (Desktop & Tablet) -->
+    <div class="header-right">
+      <!-- Target Language Selector -->
+      <div class="header-tool language-selector-wrapper">
+        <div class="select-container" title="Select Target Language">
+          <i class="fa-solid fa-language select-icon"></i>
+          <select id="targetLangSelect" aria-label="Select Target Language">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Quick Sample Articles Button -->
+      <div class="dropdown-wrapper hide-mobile">
+        <button id="sampleArticlesBtn" class="header-btn" title="Load sample article">
+          <i class="fa-solid fa-compass"></i>
+          <span class="btn-label">Samples</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div id="sampleDropdown" class="dropdown-menu">
+          <div class="dropdown-header">Featured Demo Articles</div>
+          <button class="dropdown-item" onclick="loadSampleArticle('sample-ai')">
+            <i class="fa-solid fa-microchip"></i>
+            <div>
+              <strong>Artificial Intelligence & Language</strong>
+              <small>OmniArticle Tech Review</small>
+            </div>
+          </button>
+          <button class="dropdown-item" onclick="loadSampleArticle('sample-space')">
+            <i class="fa-solid fa-rocket"></i>
+            <div>
+              <strong>Deep Space Exoplanet Discovery</strong>
+              <small>Cosmic Horizons Observatory</small>
+            </div>
+          </button>
+          <button class="dropdown-item" onclick="loadSampleArticle('sample-news')">
+            <i class="fa-solid fa-solar-panel"></i>
+            <div>
+              <strong>Global Energy Transition 2026</strong>
+              <small>The Sustainable Standard</small>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Paste Custom Article Modal Button -->
+      <button id="customArticleBtn" class="header-btn hide-mobile" title="Paste custom text or offline article">
+        <i class="fa-regular fa-file-lines"></i>
+        <span class="btn-label">Paste Text</span>
+      </button>
+
+      <!-- Side-by-Side Dual View Switch -->
+      <button id="dualViewBtn" class="header-btn toggle-btn hide-mobile" title="Toggle bilingual side-by-side view">
+        <i class="fa-solid fa-table-columns"></i>
+        <span class="btn-label">Dual View</span>
+      </button>
+
+      <!-- Reading Preferences Popover -->
+      <div class="dropdown-wrapper">
+        <button id="settingsBtn" class="header-btn icon-only-btn" title="Reading & Appearance Settings">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+        <div id="settingsDropdown" class="dropdown-menu settings-panel">
+          <div class="settings-group">
+            <label class="settings-label">Target Language</label>
+            <div class="select-container settings-lang-container" title="Select Translation Language">
+              <i class="fa-solid fa-language select-icon"></i>
+              <select id="settingsLangSelect" class="lang-dropdown" aria-label="Target Translation Language">
+                <!-- Populated via JS -->
+              </select>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label class="settings-label">Color Theme</label>
+            <div class="theme-buttons">
+              <button class="theme-opt active" data-theme="light" title="Light theme">
+                <i class="fa-regular fa-sun"></i> Light
+              </button>
+              <button class="theme-opt" data-theme="dark" title="Dark theme">
+                <i class="fa-regular fa-moon"></i> Dark
+              </button>
+              <button class="theme-opt" data-theme="sepia" title="Sepia Paper theme">
+                <i class="fa-solid fa-book"></i> Sepia
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label class="settings-label">Typography</label>
+            <div class="font-buttons">
+              <button class="font-opt active" data-font="space">Space Grotesk</button>
+              <button class="font-opt" data-font="sans">Inter</button>
+              <button class="font-opt" data-font="serif">Serif</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label class="settings-label">Font Size</label>
+            <div class="font-size-controls">
+              <button id="decreaseFontBtn" class="size-btn" title="Decrease font size">A-</button>
+              <span id="fontSizeDisplay">18px</span>
+              <button id="increaseFontBtn" class="size-btn" title="Increase font size">A+</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label class="settings-label">Line Spacing</label>
+            <div class="spacing-buttons">
+              <button class="spacing-opt" data-spacing="compact">Compact</button>
+              <button class="spacing-opt active" data-spacing="normal">Normal</button>
+              <button class="spacing-opt" data-spacing="relaxed">Relaxed</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vocabulary Bank Drawer Button -->
+      <button id="vocabDrawerBtn" class="header-btn vocab-btn hide-mobile" title="Open saved vocabulary bank">
+        <i class="fa-solid fa-star"></i>
+        <span class="btn-label">Vocab</span>
+        <span id="vocabBadgeCount" class="vocab-badge">0</span>
+      </button>
+
+      <!-- Sidebar Toggle for Mobile/Tablet -->
+      <button id="mobileSidebarToggleBtn" class="header-btn show-mobile-tablet" title="Toggle Language Assistant">
+        <i class="fa-solid fa-brain"></i>
+        <span id="mobileSidebarBadge" class="sidebar-pulse-dot" style="display:none;"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+    
+    <!-- Left Pane: Article Reader Area -->
+    <section class="reader-section" id="readerSection">
+      
+      <!-- Welcome / Blank State -->
+      <div id="welcomeState" class="welcome-card">
+        <div class="welcome-hero">
+          <div class="welcome-logo-badge">
+            <img src="/assets/icon.svg" alt="OmniArticle" class="welcome-svg-logo">
+          </div>
+          <h1>Read Any Article in Any Language</h1>
+          <p class="welcome-lead">
+            Paste an article link from <strong>The Indian Express</strong>, <strong>BBC</strong>, <strong>The Hindu</strong>, <strong>TechCrunch</strong>, <strong>Wikipedia</strong>, or <strong>any site on the web</strong>. Highlight any sentence to see instant translations, word definitions, synonyms, and pronunciation.
+          </p>
+
+          <div class="welcome-quick-pills">
+            <span class="quick-pill-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Try instant samples:</span>
+            <button class="pill-btn" onclick="loadSampleArticle('sample-ai')">
+              🤖 AI & Creativity
+            </button>
+            <button class="pill-btn" onclick="loadSampleArticle('sample-space')">
+              🪐 Exoplanet Discovery
+            </button>
+            <button class="pill-btn" onclick="loadSampleArticle('sample-news')">
+              ⚡ Clean Energy 2026
+            </button>
+          </div>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-item">
+            <div class="feature-icon"><i class="fa-solid fa-globe"></i></div>
+            <h3>Universal Support</h3>
+            <p>Compatible with articles from all news websites, journals, blogs, and Substack, plus custom text pasting.</p>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><i class="fa-solid fa-language"></i></div>
+            <h3>30+ Languages</h3>
+            <p>Translate into Hindi, Spanish, French, German, Japanese, Arabic, Bengali, Tamil, Telugu, and more.</p>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><i class="fa-solid fa-spell-check"></i></div>
+            <h3>Interactive Vocabulary</h3>
+            <p>Select any word for instant definitions, grammatical parts of speech, synonyms, audio speech, and flashcards.</p>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon"><i class="fa-solid fa-table-columns"></i></div>
+            <h3>Bilingual Dual View</h3>
+            <p>Read original and translated text side-by-side with synchronized paragraph highlighting.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="reader-loading" style="display:none;">
+        <div class="loader-spinner"></div>
+        <h3 id="loadingText">Extracting article content...</h3>
+        <p class="loading-subtext">Stripping ads, formatting typography, and preparing translation engine</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" class="reader-error" style="display:none;">
+        <div class="error-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h3 id="errorHeading">Unable to Load Article</h3>
+        <p id="errorMessage">Please check the link and try again.</p>
+        <div class="error-actions">
+          <button class="btn btn-secondary" onclick="openCustomArticleModal()">
+            <i class="fa-regular fa-clipboard"></i> Paste Article Manually
+          </button>
+          <button class="btn btn-primary" onclick="resetToHome()">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Try Another Link
+          </button>
+        </div>
+      </div>
+
+      <!-- Article Content Display -->
+      <article id="articleCard" class="article-card" style="display:none;">
+        <!-- Article Header & Metadata -->
+        <header class="article-header">
+          <div class="article-source-tag">
+            <span id="articleSiteBadge" class="source-badge">
+              <i class="fa-regular fa-newspaper"></i> <span id="articleSiteName">Source</span>
+            </span>
+            <span id="articleReadTime" class="meta-item"><i class="fa-regular fa-clock"></i> 4 min read</span>
+            <span id="articleWordCount" class="meta-item"><i class="fa-solid fa-align-left"></i> 820 words</span>
+          </div>
+
+          <h1 id="articleTitle" class="article-headline">Article Title</h1>
+
+          <div class="article-meta-row">
+            <div class="author-info">
+              <i class="fa-regular fa-user"></i>
+              <span id="articleAuthor">Author Name</span>
+              <span id="articleDateSeparator" class="meta-sep">•</span>
+              <span id="articlePublishedDate">Date</span>
+            </div>
+
+            <!-- Reading Actions -->
+            <div class="article-actions">
+              <button id="translateAllBtn" class="action-btn primary" title="Translate all paragraphs to selected language">
+                <i class="fa-solid fa-language"></i> <span class="hide-mobile">Translate Entire Article</span><span class="show-mobile">Translate All</span>
+              </button>
+              <button id="speakArticleBtn" class="action-btn" title="Listen to article read aloud">
+                <i class="fa-solid fa-volume-high"></i> <span class="btn-speech-label">Listen</span>
+                <span class="audio-waves" style="display:none;">
+                  <span></span><span></span><span></span>
+                </span>
+              </button>
+              <button id="printArticleBtn" class="action-btn hide-mobile" title="Print or save as PDF">
+                <i class="fa-solid fa-print"></i>
+              </button>
+              <a id="originalLinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="action-btn hide-mobile" title="Open original link">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Translation Progress Banner -->
+          <div id="translationProgressBanner" class="translation-progress-banner" style="display:none;">
+            <div class="progress-info">
+              <span><i class="fa-solid fa-spinner fa-spin"></i> Translating article into <strong id="progressLangName">Hindi</strong>...</span>
+              <span id="progressPercentage">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div id="progressBarFill" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Lead Featured Image -->
+        <figure id="articleHeroFigure" class="article-hero-figure" style="display:none;">
+          <img id="articleHeroImage" src="" alt="Featured article image">
+        </figure>
+
+        <!-- Article Content Body -->
+        <div id="articleBody" class="article-body">
+          <!-- Paragraphs and Headings injected here -->
+        </div>
+      </article>
+
+    </section>
+
+    <!-- Right Pane: Intelligence & Translation Sidebar -->
+    <aside class="sidebar-section" id="sidebarSection">
+      
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <i class="fa-solid fa-brain"></i>
+          <span>Language Assistant</span>
+        </div>
+        <div class="sidebar-header-right">
+          <div class="select-container sidebar-lang-container" title="Select Translation Language">
+            <i class="fa-solid fa-language select-icon"></i>
+            <select id="sidebarLangSelect" class="lang-dropdown" aria-label="Change Translation Language">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+          <button id="closeMobileSidebarBtn" class="close-sidebar-btn show-mobile-tablet" title="Close Assistant">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Selection & Translation Card -->
+      <div class="sidebar-card" id="selectionCard">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-highlighter"></i>
+            <span>Selected Text</span>
+          </div>
+          <div class="card-actions">
+            <button id="speakSelectedBtn" class="icon-btn" title="Listen to selected text" style="display:none;">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="saveWordBtn" class="icon-btn" title="Save to vocabulary" style="display:none;">
+              <i class="fa-regular fa-star"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="selectedTextDisplay" class="selected-text-box">
+          <p class="placeholder-tip">
+            <i class="fa-solid fa-arrow-pointer"></i> Highlight or double-tap any word or sentence in the article to inspect instant translation and dictionary insights.
+          </p>
+        </div>
+      </div>
+
+      <!-- Target Translation Card -->
+      <div class="sidebar-card" id="translationCard">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-language"></i>
+            <span id="translationTargetTitle">Translation</span>
+          </div>
+          <div class="card-actions">
+            <button id="speakTranslationBtn" class="icon-btn" title="Listen to translation" style="display:none;">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="copyTranslationBtn" class="icon-btn" title="Copy translation to clipboard" style="display:none;">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="translationDisplay" class="translation-text-box">
+          <span class="placeholder-muted">Translation will appear here...</span>
+        </div>
+      </div>
+
+      <!-- Word Details & Synonyms Card (Active for Single Word) -->
+      <div class="sidebar-card" id="dictionaryCard" style="display:none;">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-book"></i>
+            <span>Dictionary & Synonyms</span>
+          </div>
+          <span id="phoneticTag" class="phonetic-badge"></span>
+        </div>
+
+        <!-- Meanings & Part of Speech -->
+        <div id="definitionsContainer" class="definitions-container">
+          <!-- Definitions populated via JS -->
+        </div>
+
+        <!-- Synonyms & Antonyms -->
+        <div id="synonymsWrapper" class="tags-section" style="display:none;">
+          <div class="tags-heading"><i class="fa-solid fa-layer-group"></i> Synonyms:</div>
+          <div id="synonymsContainer" class="tags-container"></div>
+        </div>
+
+        <div id="antonymsWrapper" class="tags-section" style="display:none;">
+          <div class="tags-heading"><i class="fa-solid fa-arrows-split-up-and-left"></i> Antonyms:</div>
+          <div id="antonymsContainer" class="tags-container"></div>
+        </div>
+      </div>
+
+      <!-- Quick Tips Card -->
+      <div class="sidebar-card tips-card">
+        <div class="tips-header"><i class="fa-regular fa-lightbulb"></i> Pro Tips</div>
+        <ul class="tips-list">
+          <li><strong>Double-tap or highlight</strong> any word for instant definitions.</li>
+          <li>Click the <strong>Dual View</strong> button to read original and translated versions side-by-side.</li>
+          <li>Click the <strong>⭐ Vocab</strong> tab to practice saved words with interactive flashcards.</li>
+        </ul>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="mobile-bottom-bar" id="mobileBottomBar">
+    <button class="mob-nav-btn active" id="mobTabReader" onclick="switchToMobileTab('reader')">
+      <i class="fa-solid fa-book-open"></i>
+      <span>Reader</span>
+    </button>
+    <button class="mob-nav-btn" id="mobTabTranslate" onclick="switchToMobileTab('translate')">
+      <i class="fa-solid fa-brain"></i>
+      <span>Assistant</span>
+      <span id="mobTranslateBadge" class="mob-badge-dot" style="display:none;"></span>
+    </button>
+    <button class="mob-nav-btn" id="mobTabVocab" onclick="openVocabDrawer()">
+      <i class="fa-solid fa-star"></i>
+      <span>Vocab</span>
+      <span id="mobVocabBadge" class="mob-badge-count">0</span>
+    </button>
+    <button class="mob-nav-btn" id="mobTabCustom" onclick="openCustomArticleModal()">
+      <i class="fa-regular fa-file-lines"></i>
+      <span>Paste</span>
+    </button>
+    <button class="mob-nav-btn" id="mobTabSettings" onclick="toggleMobileSettings()">
+      <i class="fa-solid fa-sliders"></i>
+      <span>Display</span>
+    </button>
+  </nav>
+
+  <!-- Floating Selection Quick Action Tooltip -->
+  <div id="floatingTooltip" class="floating-tooltip" style="display:none;">
+    <button id="floatTranslateBtn" title="Translate selection">
+      <i class="fa-solid fa-language"></i> Translate
+    </button>
+    <button id="floatSpeakBtn" title="Pronounce selection">
+      <i class="fa-solid fa-volume-high"></i> Listen
+    </button>
+    <button id="floatSaveBtn" title="Save to vocabulary">
+      <i class="fa-regular fa-star"></i> Save
+    </button>
+  </div>
+
+  <!-- Custom Article / Paste Text Modal -->
+  <div id="customModal" class="modal-overlay" style="display:none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-regular fa-newspaper"></i>
+          <span>Paste / Read Custom Article</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeCustomArticleModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-sub">Have an article from a paywalled site, newsletter, PDF, or draft? Paste it here to read and translate with full features.</p>
+        
+        <div class="form-group">
+          <label for="customTitle">Article Title</label>
+          <input type="text" id="customTitle" placeholder="e.g. Breaking Discoveries in Modern Astrophysics" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="customAuthor">Author (Optional)</label>
+            <input type="text" id="customAuthor" placeholder="e.g. Editorial Staff" />
+          </div>
+          <div class="form-group">
+            <label for="customSource">Source / Publication (Optional)</label>
+            <input type="text" id="customSource" placeholder="e.g. Custom Notes" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="customContent">Article Content (Paragraphs)</label>
+          <textarea id="customContent" rows="8" placeholder="Paste article text here... Separate paragraphs with an empty line."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCustomArticleModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCustomArticle()">
+          <i class="fa-solid fa-book-open"></i> Open in Reader
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vocabulary Bank Drawer -->
+  <div id="vocabDrawer" class="drawer-overlay" style="display:none;">
+    <div class="drawer-container">
+      <div class="drawer-header">
+        <div class="drawer-title">
+          <i class="fa-solid fa-star"></i>
+          <span>My Vocabulary Notebook</span>
+          <span id="drawerVocabCount" class="vocab-badge">0</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeVocabDrawer()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="drawer-toolbar">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="vocabSearchInput" placeholder="Filter saved words...">
+        </div>
+        <div class="drawer-actions">
+          <button id="studyModeBtn" class="btn btn-sm btn-outline" title="Practice flashcards">
+            <i class="fa-solid fa-layer-group"></i> Flashcards
+          </button>
+          <button id="exportVocabBtn" class="btn btn-sm btn-outline" title="Export as CSV/JSON">
+            <i class="fa-solid fa-download"></i> Export
+          </button>
+          <button id="clearVocabBtn" class="btn btn-sm btn-danger-outline" title="Clear all saved words">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Flashcard Interactive Study View (Toggleable) -->
+      <div id="flashcardSection" class="flashcard-section" style="display:none;">
+        <div class="flashcard-header">
+          <span id="flashcardCounter">Card 1 of 5</span>
+          <button class="btn-link" onclick="toggleFlashcardMode(false)">Exit Study Mode</button>
+        </div>
+        <div class="flashcard-card" id="flashcardCard" onclick="flipFlashcard()">
+          <div class="flashcard-inner">
+            <div class="flashcard-front">
+              <span class="card-prompt">Tap or click to reveal translation & definition</span>
+              <h2 id="fcWord" class="card-word">Word</h2>
+              <span id="fcPhonetic" class="card-phonetic"></span>
+            </div>
+            <div class="flashcard-back">
+              <h3 id="fcTranslation" class="card-translation">Translation</h3>
+              <p id="fcDefinition" class="card-definition">Definition</p>
+            </div>
+          </div>
+        </div>
+        <div class="flashcard-nav">
+          <button id="fcPrevBtn" class="btn btn-sm btn-outline" onclick="prevFlashcard()"><i class="fa-solid fa-arrow-left"></i> Prev</button>
+          <button id="fcFlipBtn" class="btn btn-sm btn-secondary" onclick="flipFlashcard()"><i class="fa-solid fa-rotate"></i> Flip Card</button>
+          <button id="fcNextBtn" class="btn btn-sm btn-primary" onclick="nextFlashcard()">Next <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Vocabulary Word List View -->
+      <div id="vocabListContainer" class="vocab-list-container">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Client-side Application Scripts -->
+  <script src="/js/app.js"></script>
+</body>
+</html>
